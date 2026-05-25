@@ -1,0 +1,136 @@
+<!-- Page header -->
+    <div class="flex items-start justify-between mb-8">
+      <div>
+        <p class="text-[10px] font-mono font-semibold tracking-widest uppercase text-slate-500 mb-1">PLM / OVERVIEW</p>
+        <h1 class="text-2xl font-semibold text-slate-100 tracking-tight">Dashboard</h1>
+        <p class="text-sm text-slate-400 mt-1">Device fleet status at a glance</p>
+      </div>
+      <button class="btn-secondary btn" (click)="loadAll()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <!-- Total -->
+      <div class="card p-5 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-0.5 bg-sky-500"></div>
+        <p class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500">Total Devices</p>
+        <p class="text-4xl font-light font-mono text-slate-100 mt-2 mb-1 tracking-tight">{{ totalDevices() }}</p>
+        <p class="text-xs text-slate-500">registered in system</p>
+      </div>
+      <!-- Active -->
+      <div class="card p-5 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500"></div>
+        <p class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500">Active</p>
+        <p class="text-4xl font-light font-mono text-slate-100 mt-2 mb-1 tracking-tight">{{ activeCount() }}</p>
+        <p class="text-xs text-slate-500">currently online</p>
+      </div>
+      <!-- Outdated -->
+      <div class="card p-5 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-500"></div>
+        <p class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500">Outdated Firmware</p>
+        <p class="text-4xl font-light font-mono text-slate-100 mt-2 mb-1 tracking-tight">{{ outdatedCount() }}</p>
+        <p class="text-xs text-slate-500">need update</p>
+      </div>
+      <!-- No firmware -->
+      <div class="card p-5 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-0.5 bg-red-500"></div>
+        <p class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500">No Firmware</p>
+        <p class="text-4xl font-light font-mono text-slate-100 mt-2 mb-1 tracking-tight">{{ noFwCount() }}</p>
+        <p class="text-xs text-slate-500">unassigned</p>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="grid grid-cols-2 gap-4 mb-8">
+
+      <!-- Status bar chart -->
+      <div class="card p-6">
+        <p class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500 mb-5">Device count by status</p>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between mb-2">
+              <span class="text-xs font-mono text-emerald-400">ACTIVE</span>
+              <span class="text-xs font-mono text-slate-300">{{ activeCount() }}</span>
+            </div>
+            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full bg-emerald-500 rounded-full transition-all duration-700 ease-out"
+                   [style.width]="activePercent() + '%'"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-2">
+              <span class="text-xs font-mono text-red-400">INACTIVE</span>
+              <span class="text-xs font-mono text-slate-300">{{ inactiveCount() }}</span>
+            </div>
+            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full bg-red-500 rounded-full transition-all duration-700 ease-out"
+                   [style.width]="inactivePercent() + '%'"></div>
+            </div>
+          </div>
+        </div>
+        <p class="text-[11px] font-mono text-slate-600 mt-5">{{ activePercent() }}% fleet active</p>
+      </div>
+
+      <!-- Firmware health -->
+      <div class="card p-6">
+        <p class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500 mb-5">Firmware health</p>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between px-4 py-3 bg-surface-700 rounded-lg">
+            <span class="text-sm text-slate-300">Up to date</span>
+            <span class="font-mono text-sm text-emerald-400">{{ totalDevices() - outdatedCount() - noFwCount() }}</span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-3 bg-surface-700 rounded-lg">
+            <span class="text-sm text-slate-300">Outdated firmware</span>
+            <span class="font-mono text-sm text-amber-400">{{ outdatedCount() }}</span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-3 bg-surface-700 rounded-lg">
+            <span class="text-sm text-slate-300">No firmware assigned</span>
+            <span class="font-mono text-sm text-red-400">{{ noFwCount() }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Last change per device -->
+    <div class="card">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700/60">
+        <p class="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500">Last change per device</p>
+        <a routerLink="/changelogs" class="text-xs text-sky-400 hover:text-sky-300 transition-colors">View all →</a>
+      </div>
+
+      @if (loading()) {
+        <div class="flex justify-center py-12">
+          <div class="w-6 h-6 border-2 border-slate-700 border-t-sky-500 rounded-full animate-spin-slow"></div>
+        </div>
+      } @else if (lastChanges().length === 0) {
+        <div class="text-center py-16">
+          <p class="text-3xl mb-3 opacity-30">≡</p>
+          <p class="text-sm text-slate-400">No change logs yet</p>
+        </div>
+      } @else {
+        <table class="w-full">
+          <thead class="tbl-head"><tr>
+            <th>Device</th><th>Last Action</th><th>When</th>
+          </tr></thead>
+          <tbody class="tbl-body">
+            @for (item of lastChanges(); track item.deviceId) {
+              <tr>
+                <td>
+                  <a routerLink="/devices"
+                     class="font-mono text-xs text-sky-400 hover:text-sky-300 transition-colors">
+                    {{ item.deviceName }}
+                  </a>
+                </td>
+                <td><span class="badge" [class]="actionBadge(item.lastAction)">{{ item.lastAction }}</span></td>
+                <td class="font-mono text-xs text-slate-500">{{ formatDate(item.lastTs) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
