@@ -1,0 +1,123 @@
+import { Component, inject } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { ToastService } from './services/toast.service';
+import { AuthService } from './services/auth.service';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
+  template: `
+    <div class="flex h-screen overflow-hidden bg-surface-900">
+
+      <!-- ── Sidebar (only shown when logged in) ─────────────── -->
+      @if (authService.isLoggedIn()) {
+        <aside class="w-56 shrink-0 bg-surface-800 border-r border-slate-700/60 flex flex-col">
+
+          <!-- Brand -->
+          <div class="px-5 py-6 border-b border-slate-700/60">
+            <p class="text-[10px] font-mono font-semibold tracking-widest text-sky-400 uppercase mb-1">IoT / PLM</p>
+            <p class="text-[15px] font-semibold text-slate-100 tracking-tight">Device Lifecycle</p>
+          </div>
+
+          <!-- Nav -->
+          <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+            <p class="text-[9px] font-semibold tracking-widest uppercase text-slate-600 px-3 pb-1 pt-2">Overview</p>
+            <a class="nav-item" routerLink="/dashboard" routerLinkActive="active">
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/>
+              </svg>
+              Dashboard
+            </a>
+
+            <p class="text-[9px] font-semibold tracking-widest uppercase text-slate-600 px-3 pb-1 pt-4">Management</p>
+            <a class="nav-item" routerLink="/devices" routerLinkActive="active">
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/>
+              </svg>
+              Devices
+            </a>
+            <a class="nav-item" routerLink="/firmware" routerLinkActive="active">
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+              </svg>
+              Firmware
+            </a>
+            <a class="nav-item" routerLink="/changelogs" routerLinkActive="active">
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              Change Logs
+            </a>
+          </nav>
+
+          <!-- User profile + logout -->
+          <div class="border-t border-slate-700/60 p-3">
+            <div class="flex items-center gap-3 px-2 py-2 rounded-lg mb-1">
+              <!-- Avatar initials -->
+              <div class="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/20
+                          flex items-center justify-center shrink-0">
+                <span class="text-xs font-semibold text-sky-400 font-mono">
+                  {{ getInitials() }}
+                </span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-slate-200 truncate">{{ authService.currentUser()?.name }}</p>
+                <p class="text-[10px] text-slate-500 truncate font-mono">{{ authService.currentUser()?.role }}</p>
+              </div>
+            </div>
+            <button
+              (click)="authService.logout()"
+              class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-500
+                     hover:bg-red-500/10 hover:text-red-400 transition-colors duration-150 cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+              Sign out
+            </button>
+            <p class="text-[10px] font-mono text-slate-700 px-3 pt-1">v1.0.0 · Week 1</p>
+          </div>
+
+        </aside>
+      }
+
+      <!-- ── Main content ─────────────────────────────────────── -->
+      <main class="flex-1 overflow-y-auto" [class.p-8]="authService.isLoggedIn()">
+        <router-outlet />
+      </main>
+    </div>
+
+    <!-- ── Toast notifications ──────────────────────────────── -->
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+      @for (toast of toastService.toasts(); track toast.id) {
+        <div class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm min-w-64 animate-slide-in-right
+                    bg-surface-800 border border-slate-700/60 shadow-2xl"
+             [style.border-left]="toastBorder(toast.type)">
+          <span class="text-base leading-none"
+                [class.text-emerald-400]="toast.type === 'success'"
+                [class.text-red-400]="toast.type === 'error'"
+                [class.text-sky-400]="toast.type === 'info'">
+            {{ toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ' }}
+          </span>
+          <span class="text-slate-200">{{ toast.message }}</span>
+        </div>
+      }
+    </div>
+  `
+})
+export class AppComponent {
+  toastService = inject(ToastService);
+  authService  = inject(AuthService);
+
+  getInitials(): string {
+    const name = this.authService.currentUser()?.name || '';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  toastBorder(type: string): string {
+    if (type === 'success') return '3px solid #10b981';
+    if (type === 'error')   return '3px solid #ef4444';
+    return '3px solid #38bdf8';
+  }
+}

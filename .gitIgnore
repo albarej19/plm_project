@@ -1,0 +1,65 @@
+# =================================================
+# CLIENT (ANGULAR)
+# =================================================
+
+client/node_modules/
+client/.angular/
+client/dist/
+client/coverage/
+
+# cache
+client/.cache/
+
+# logs
+client/npm-debug.log*
+client/yarn-debug.log*
+client/yarn-error.log*
+
+# env files
+client/.env
+client/.env.local
+
+
+# =================================================
+# SERVER (SPRING BOOT / MAVEN)
+# =================================================
+
+server/target/
+server/build/
+server/out/
+
+# compiled files
+server/*.class
+
+# logs
+server/*.log
+
+# local configs / secrets
+server/application-local.properties
+server/application-dev.properties
+
+
+# =================================================
+# IDE FILES
+# =================================================
+
+.idea/
+.vscode/
+
+*.iml
+
+
+# =================================================
+# OS FILES
+# =================================================
+
+.DS_Store
+Thumbs.db
+
+
+# =================================================
+# TEMP FILES
+# =================================================
+
+*.tmp
+*.swp

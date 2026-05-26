@@ -1,0 +1,206 @@
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ApiService } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
+import { AuthService } from '../../services/auth.service';
+import { ChangeLog, Device, ChangeLogRequest } from '../../models/models';
+
+@Component({
+  selector: 'app-changelogs',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="flex items-start justify-between mb-8">
+      <div>
+        <p class="text-[10px] font-mono font-semibold tracking-widest uppercase text-slate-500 mb-1">PLM / CHANGE LOGS</p>
+        <h1 class="text-2xl font-semibold text-slate-100 tracking-tight">Change Logs</h1>
+        <p class="text-sm text-slate-400 mt-1">{{ filtered().length }} of {{ logs().length }} entries</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="badge" [class]="isAdmin() ? 'badge-purple' : 'badge-info'">
+          {{ isAdmin() ? 'ADMIN' : 'USER — view only' }}
+        </span>
+        @if (isAdmin()) {
+          <button class="btn-primary btn" (click)="showAppendModal.set(true)">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            Append Log
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"
+             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input class="form-input pl-9 w-56" placeholder="Search device, action..."
+               [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()" />
+      </div>
+      <select class="form-input w-44" [(ngModel)]="deviceFilter" (ngModelChange)="applyFilter()">
+        <option value="">All devices</option>
+        @for (d of devices(); track d.id) {
+          <option [value]="d.id">{{ d.name }}</option>
+        }
+      </select>
+      <select class="form-input w-52" [(ngModel)]="actionFilter" (ngModelChange)="applyFilter()">
+        <option value="">All actions</option>
+        <option value="DEVICE_CREATED">DEVICE_CREATED</option>
+        <option value="STATUS_UPDATED">STATUS_UPDATED</option>
+        <option value="FIRMWARE_ASSIGNED">FIRMWARE_ASSIGNED</option>
+      </select>
+      <div class="flex-1"></div>
+      <button class="btn-secondary btn btn-sm" (click)="loadLogs()">↺ Refresh</button>
+    </div>
+
+    <div class="card overflow-hidden">
+      @if (loading()) {
+        <div class="flex justify-center py-16">
+          <div class="w-6 h-6 border-2 border-slate-700 border-t-sky-500 rounded-full animate-spin-slow"></div>
+        </div>
+      } @else if (filtered().length === 0) {
+        <div class="text-center py-16">
+          <p class="text-4xl mb-3 opacity-20">≡</p>
+          <p class="text-sm text-slate-400">No change logs found</p>
+          <p class="text-xs text-slate-600 mt-1">Logs are auto-created when devices are modified</p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="tbl-head"><tr>
+              <th>#</th><th>Device</th><th>Action</th><th>Description</th><th>Timestamp</th>
+            </tr></thead>
+            <tbody class="tbl-body">
+              @for (log of filtered(); track log.id) {
+                <tr>
+                  <td class="font-mono text-xs text-slate-600">{{ log.id }}</td>
+                  <td>
+                    <span class="text-sm font-medium text-slate-200">{{ log.deviceName }}</span>
+                    <br>
+                    <span class="font-mono text-xs text-slate-600">ID: {{ log.deviceId }}</span>
+                  </td>
+                  <td><span class="badge" [class]="actionBadge(log.action)">{{ log.action }}</span></td>
+                  <td class="text-xs text-slate-400 max-w-xs truncate">{{ log.description || '—' }}</td>
+                  <td class="font-mono text-xs text-slate-500">{{ formatDate(log.ts) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <!-- Append Modal (ADMIN only) -->
+    @if (showAppendModal()) {
+      <div class="modal-backdrop" (click)="closeModal($event)">
+        <div class="modal-box mx-4">
+          <div class="flex items-center justify-between px-6 py-5 border-b border-slate-700/60">
+            <h2 class="text-base font-semibold text-slate-100">Append Change Log</h2>
+            <button class="text-slate-500 hover:text-slate-200 text-xl" (click)="showAppendModal.set(false)">✕</button>
+          </div>
+          <div class="px-6 py-5 space-y-4">
+            <div>
+              <label class="form-label">Device</label>
+              <select class="form-input" [(ngModel)]="appendForm.deviceId">
+                <option [ngValue]="0" disabled>Select a device...</option>
+                @for (d of devices(); track d.id) {
+                  <option [ngValue]="d.id">{{ d.name }} ({{ d.serialNumber }})</option>
+                }
+              </select>
+              @if (formErrors['deviceId']) { <p class="form-error">{{ formErrors['deviceId'] }}</p> }
+            </div>
+            <div>
+              <label class="form-label">Action</label>
+              <input class="form-input" [(ngModel)]="appendForm.action"
+                     placeholder="e.g. MAINTENANCE_CHECK, CONFIG_UPDATED" />
+              @if (formErrors['action']) { <p class="form-error">{{ formErrors['action'] }}</p> }
+            </div>
+            <div>
+              <label class="form-label">Description (optional)</label>
+              <textarea class="form-input resize-none" rows="3" [(ngModel)]="appendForm.description"
+                        placeholder="Describe what happened..."></textarea>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 px-6 py-4 border-t border-slate-700/60">
+            <button class="btn-secondary btn" (click)="showAppendModal.set(false)">Cancel</button>
+            <button class="btn-primary btn" (click)="appendLog()" [disabled]="saving()">
+              {{ saving() ? 'Saving...' : 'Append Log' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  `
+})
+export class ChangelogsComponent implements OnInit {
+  private api   = inject(ApiService);
+  private toast  = inject(ToastService);
+  private auth   = inject(AuthService);
+
+  isAdmin = () => this.auth.isAdmin();
+
+  logs = signal<ChangeLog[]>([]); filtered = signal<ChangeLog[]>([]);
+  devices = signal<Device[]>([]);
+  loading = signal(true); saving = signal(false);
+  showAppendModal = signal(false);
+
+  searchTerm = ''; deviceFilter = ''; actionFilter = '';
+  appendForm: ChangeLogRequest = { deviceId: 0, action: '', description: '' };
+  formErrors: Record<string, string> = {};
+
+  ngOnInit() {
+    this.loadLogs();
+    this.api.getDevices().subscribe(d => this.devices.set(d));
+  }
+
+  loadLogs() {
+    this.loading.set(true);
+    this.api.getChangeLogs().subscribe({
+      next: logs => { this.logs.set(logs); this.applyFilter(); this.loading.set(false); },
+      error: () => { this.toast.error('Failed to load logs'); this.loading.set(false); }
+    });
+  }
+
+  applyFilter() {
+    let r = this.logs();
+    if (this.searchTerm) {
+      const q = this.searchTerm.toLowerCase();
+      r = r.filter(l => l.deviceName.toLowerCase().includes(q) || l.action.toLowerCase().includes(q) || (l.description || '').toLowerCase().includes(q));
+    }
+    if (this.deviceFilter) r = r.filter(l => l.deviceId === +this.deviceFilter);
+    if (this.actionFilter) r = r.filter(l => l.action === this.actionFilter);
+    this.filtered.set(r);
+  }
+
+  validate(): boolean {
+    this.formErrors = {};
+    if (!this.appendForm.deviceId) this.formErrors['deviceId'] = 'Select a device';
+    if (!this.appendForm.action?.trim()) this.formErrors['action'] = 'Action is required';
+    return Object.keys(this.formErrors).length === 0;
+  }
+
+  appendLog() {
+    if (!this.validate()) return;
+    this.saving.set(true);
+    this.api.appendChangeLog(this.appendForm).subscribe({
+      next: () => { this.toast.success('Log appended'); this.showAppendModal.set(false); this.appendForm = { deviceId: 0, action: '', description: '' }; this.saving.set(false); this.loadLogs(); },
+      error: (err) => { this.toast.error(err.error?.message || 'Append failed'); this.saving.set(false); }
+    });
+  }
+
+  closeModal(e?: MouseEvent) { if (e && (e.target as HTMLElement).className.includes('modal-backdrop')) this.showAppendModal.set(false); }
+  actionBadge(action: string): string {
+    if (action.includes('CREATED'))  return 'badge badge-info';
+    if (action.includes('STATUS'))   return 'badge badge-amber';
+    if (action.includes('FIRMWARE')) return 'badge badge-purple';
+    return 'badge badge-info';
+  }
+  formatDate(ts: string): string {
+    return new Date(ts).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+}
